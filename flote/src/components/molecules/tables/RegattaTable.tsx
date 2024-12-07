@@ -17,16 +17,8 @@ type Props = {
 export default function RegattaTable({ searchQuery }: Props) {
   const [regattas, setRegattas] = useState<Regatta[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [rows, setRows] = useState<SearchTableRow[]>([]);
   const navigate = useNavigate();
-
-  const rows: SearchTableRow[] = regattas.map((e) => {
-    return {
-      id: e._id!,
-      date: new Date().toLocaleString(), // TODO
-      name: e.name,
-      action: <OpenExternalLinkButton />,
-    };
-  });
 
   const handleRowAction = (id: React.Key) => {
     navigate(`/regatta/${id}`);
@@ -42,6 +34,31 @@ export default function RegattaTable({ searchQuery }: Props) {
       }
     });
   }, [searchQuery]);
+
+  useEffect(() => {
+    setRows([]);
+
+    regattas.forEach(regatta => {
+      socket.emit("getRegattaById", regatta._id, (res: EventResponse) => {
+        if (res.error) {
+          console.error("getRegattaById failed:", res.error);
+        } else {
+          const races = res.data.races.sort((r1, r2) => r1.startTime > r2.startTime ? r2 : r1);
+          const date = races ? races[0].startTime : "TBD";
+
+          const row: SearchTableRow = {
+            id: regatta._id!,
+            date: new Date(date).toLocaleDateString(),
+            name: regatta.name,
+            action: <OpenExternalLinkButton />,
+          }
+
+          setRows((rows) => [...rows, row]);
+        }
+      });
+    });
+
+  }, [regattas]);
 
   return (
     <ResultsTable
