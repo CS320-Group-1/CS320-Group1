@@ -62,17 +62,25 @@ async function searchBoats(query, callback) {
   const response = {};
 
   try {
-    const regex = new RegExp(query, "i");
-
-    const nameMatch = await Boat.find({ name: regex }).exec();
-    const idMatch = await Boat.find({ registrationId: regex }).exec();
-    const participantMatch = await Boat.find({
-      participantNames: regex,
+    const boats = await Boat.find({
+      name: new RegExp(query, "i"),
     }).exec();
 
-    const matches = [...nameMatch, ...idMatch, ...participantMatch];
+    response.data = { boats };
+  } catch (error) {
+    response.error = error.message;
+  }
+
+  callback(response);
+}
+
+async function getBoatsById(registrationId, callback) {
+  const response = {};
+  try {
+    const boat = await Boat.find({registrationId: registrationId}).exec();
+    const participants = boat.participantNames;
     response.data = {
-      boats: [...new Set(matches)],
+      boats: { boat, participants },
     };
   } catch (error) {
     response.error = error.message;

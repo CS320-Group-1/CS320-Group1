@@ -10,6 +10,7 @@ import { EventResponse } from "@src/models/EventResponse";
 
 import AppLayout from "@templates/AppLayout";
 import List from "@atoms/List";
+import { useNavigate } from "react-router-dom";
 import ResponsiveCard from "@molecules/ResponsiveCard";
 import CreateModal from "@atoms/cards/CreateModal";
 //for later - import ConfirmationModal from "@atoms/cards/ConfirmationModal";
@@ -26,6 +27,11 @@ export default function RegattaView() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [regatta, setRegatta] = useState<Regatta | null>(null);
 
+
+  const navigate = useNavigate();
+  const handleAddRace = () => {
+    navigate("/race/create");
+  };
 
   useEffect(() => {
     if (location.state?.regatta?.name) {
@@ -72,8 +78,8 @@ export default function RegattaView() {
         <ResponsiveCard title="Boats" onAdd={isRegattaAdmin ? () => setIsModalOpen(true) : undefined}>
           <List ariaLabel="List of boats" itemType="boat" items={boats} />
         </ResponsiveCard>
-        <ResponsiveCard title="Races">
-          <List ariaLabel="List of races" itemType="race" items={races} />
+        <ResponsiveCard title="Races"  onAdd={handleAddRace}>
+          <List ariaLabel="List of races" itemType="race" items={races} onAdd={handleAddRace} />
         </ResponsiveCard>
         <ResponsiveCard title="Timekeepers">
           <List ariaLabel="Timekeepers" itemType="timekeeper" items={timekeepers} />

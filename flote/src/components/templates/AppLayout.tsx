@@ -36,7 +36,7 @@ export default function AppLayout({
         <div className={`grow ${className}`}>{children}</div>
       </main>
       <FreepikAttribution />
-      <Footer className="px-8 lg:px-[5%] xl:px-[15%]" />
+      {/* <Footer className="px-8 lg:px-[5%] xl:px-[15%]" /> */}
     </Background>
   );
 }
