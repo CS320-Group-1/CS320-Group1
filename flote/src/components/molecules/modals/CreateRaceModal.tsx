@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+
+import { Autocomplete, AutocompleteItem } from "@nextui-org/autocomplete";
+import EditableList from "@atoms/EditableList";
 import GenericModal from "@atoms/GenericModal";
 import { Input } from "@nextui-org/input";
 import PlusButton from "@atoms/icon-buttons/PlusButton";
-import TrashButton from "@atoms/icon-buttons/TrashButton";
 
 type Props = {
   isOpen: boolean;
@@ -27,7 +29,9 @@ export default function CreateRaceModal({
   });
   const [nameError, setNameError] = useState<string | null>(null);
   const [boats, setBoats] = useState<string[]>([]);
-  const [boatDuplicateError, setBoatDuplicateError] = useState<string | null>(null);
+  const [boatDuplicateError, setBoatDuplicateError] = useState<string | null>(
+    null
+  );
   const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -47,18 +51,24 @@ export default function CreateRaceModal({
     setData((prev) => ({ ...prev, [key]: value }));
   };
 
+  const handleSelectionChange = (key: React.Key | null) => {
+    setData((prev) => ({ ...prev, addedBoats: key!.toString() }));
+  };
+
   const addOneBoat = (boat: string) => {
     if (!boat) return;
 
     if (boats.includes(boat)) {
-      setBoatDuplicateError(`Boat "${boat}" is already participating in this race.`);
+      setBoatDuplicateError(
+        `Boat "${boat}" is already participating in this race.`
+      );
       return;
     }
 
     setBoats((prev) => [...prev, boat]);
     setBoatDuplicateError(null);
+    setData((prev) => ({ ...prev, addedBoats: "" }));
   };
-
 
   const deleteBoat = (boat: string) => {
     setBoats((prev) => prev.filter((p) => p !== boat));
@@ -67,7 +77,9 @@ export default function CreateRaceModal({
   const submit = () => {
     const { name } = data;
     if (!name.trim() || boats.length === 0) {
-      setFormError("Race name is required, and at least one boat must be added.");
+      setFormError(
+        "Race name is required, and at least one boat must be added."
+      );
       return;
     }
 
@@ -81,7 +93,9 @@ export default function CreateRaceModal({
 
   if (!isOpen) return null;
 
-  const availableBoats = existingBoats.filter((boat) => !unavailableBoats.includes(boat)); // Filter out unavailable boats
+  const availableBoats = existingBoats.filter(
+    (boat) => !unavailableBoats.includes(boat)
+  );
 
   return (
     <GenericModal
@@ -105,40 +119,30 @@ export default function CreateRaceModal({
         <h2>Boats</h2>
         <div>
           <div className="flex flex-row gap-3 items-center">
-            <select
-              value={data.addedBoats}
-              onChange={(e) => inputChange("addedBoats", e.target.value)}
-              className="p-2 border"
+            <Autocomplete
+              label="Add boats"
+              selectedKey={data.addedBoats}
+              onSelectionChange={handleSelectionChange}
             >
-              <option value="">-- Select Boat --</option>
               {availableBoats.map((boat) => (
-                <option key={boat} value={boat}>
-                  {boat}
-                </option>
+                <AutocompleteItem key={boat}>{boat}</AutocompleteItem>
               ))}
-            </select>
-
+            </Autocomplete>
             <PlusButton
-                onClick={() => addOneBoat(data.addedBoats)}
-                isDisabled={!data.addedBoats}
-                ariaLabel="Add Boat"
+              onClick={() => addOneBoat(data.addedBoats)}
+              isDisabled={!data.addedBoats}
+              ariaLabel="Add Boat"
             />
           </div>
-          {boatDuplicateError && <p className="text-red-500 text-sm">{boatDuplicateError}</p>}
-        </div>
-
-        <div className="mt-4">
-          {boats.length > 0 && (
-            <ul>
-              {boats.map((boat) => (
-                <li key={boat}>
-                  {boat}
-                  <TrashButton onClick={() => deleteBoat(boat)} />
-                </li>
-              ))}
-            </ul>
+          {boatDuplicateError && (
+            <p className="text-red-500 text-sm">{boatDuplicateError}</p>
           )}
         </div>
+        <EditableList
+          items={boats}
+          onDelete={deleteBoat}
+          emptyMessage="No boats yet!"
+        />
       </div>
 
       {formError && <p className="text-red-500 text-sm">{formError}</p>}

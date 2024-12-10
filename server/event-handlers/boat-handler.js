@@ -1,4 +1,5 @@
 import { Boat } from "../models/subscribers.js";
+import { Race } from "../models/subscribers.js";
 
 export function BoatHandler(io, socket) {
   socket.on("addBoats", addBoats);
@@ -98,7 +99,7 @@ async function updateBoat(updateData, callback) {
   const response = {};
 
   try {
-    const { boatId, registrationId, name, participantNames, finishTime } = updateData;
+    const { boatId, registrationId, name, participantNames, finishTime, dns } = updateData;
     if (!boatId) {
       throw new Error("Boat ID is required to update a boat.");
     }
@@ -112,6 +113,8 @@ async function updateBoat(updateData, callback) {
     if (registrationId !== undefined) boat.registrationId = registrationId;
     if (name !== undefined) boat.name = name;
     if (participantNames !== undefined) boat.participantNames = participantNames;
+    if (finishTime !== undefined) boat.finishTime = finishTime;
+    if (dns !== undefined) boat.dns = dns;
 
     await boat.save();
 
@@ -155,11 +158,21 @@ async function deleteBoat(boatId, callback) {
       throw new Error("Boat ID is required to delete a boat.");
     }
 
-    const boat = await Boat.findByIdAndDelete(boatId);
-
+    const boat = await Boat.findById(boatId);
     if (!boat) {
       throw new Error("Boat not found.");
     }
+
+    const raceId = boat.raceId;
+    
+    if (raceId) {
+      await Race.updateOne(
+        { _id: raceId },
+        { $pull: { boatIds: boatId } }
+      );
+    }
+
+    await Boat.findByIdAndDelete(boatId);
 
     response.data = { message: "Boat deleted successfully" };
   } catch (error) {

@@ -2,8 +2,8 @@ import { Race, Regatta, Boat } from "../models/subscribers.js";
 
 export function RaceHandler(io, socket) {
   socket.on("createRace", createRace);
-  socket.on("updateRaces", updateRaces);
-  socket.on("deleteRaces", deleteRaces);
+  socket.on("updateRace", updateRace);
+  socket.on("deleteRace", deleteRace);
   socket.on("searchRaces", searchRaces);
   socket.on("getRaceById", getRaceById);
 }
@@ -28,36 +28,56 @@ async function createRace(race, callback) {
   callback(response);
 }
 
-async function updateRaces(userId) {
+const updateRace = async (updateData) => {
+  const { raceId, name, boatIds } = updateData;
+
+  if (!raceId) {
+    return { error: "Race ID is required" };
+  }
+
+  try {
+    let race = await Race.findById(raceId);
+    if (!race) {
+      return { error: "Race not found" };
+    }
+
+    if (name) {
+      race.name = name;
+    }
+    if (boatIds) {
+      race.boats = boatIds;
+    }
+
+    const updatedRace = await race.save();
+    return { data: updatedRace };
+  } catch (error) {
+    console.error("Error updating race:", error);
+    return { error: "An error occurred while updating the race" };
+  }
+};
+
+async function deleteRace(raceIdData, callback) {
   const response = {};
 
   try {
-    const admin = await Race.findByIdAndUpdate({ adminId: userId });
-    const timekeeper = await Race.findByIdAndUpdate({ timekeeperIds: userId });
-    response.data = {
-      races: { admin, timekeeper },
-    };
+    if (!raceIdData) {
+      throw new Error("Race ID is required to delete a race.");
+    }
+
+    await Boat.updateMany({ "raceId" : raceIdData }, {$unset: {raceId:1} });
+
+    const race = await Race.findByIdAndDelete(raceIdData);
+
+    if (!race) {
+      throw new Error("Race not found.");
+    }
+
+    response.data = { message: "Race deleted successfully" };
   } catch (error) {
     response.error = error.message;
   }
 
-  console.log("Race updated.")
-}
-
-async function deleteRaces(userId) {
-  const response = {};
-
-  try {
-    const admin = await Race.findByIdAndDelete({ adminId: userId });
-    const timekeeper = await Race.findByIdAndDelete({ timekeeperIds: userId });
-    response.data = {
-      races: { admin, timekeeper },
-    };
-  } catch (error) {
-    response.error = error.message;
-  }
-
-  console.log("Race deleted.")
+  callback(response);
 }
 
 /**

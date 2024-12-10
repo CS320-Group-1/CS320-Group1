@@ -1,62 +1,81 @@
 import { useParams, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
-
+import { Breadcrumb } from "@src/models/Breadcrumb";
+import { Boat } from "@models/Boat";
+import { EventResponse } from "@src/models/EventResponse";
+import { Race } from "@src/models/Race";
+import { Regatta } from "@src/models/Regatta";
+import { socket } from "@src/socket";
+import { useAuth0 } from "@auth0/auth0-react";
 import AppLayout from "@templates/AppLayout";
 import List from "@atoms/List";
 import ResponsiveCard from "@molecules/ResponsiveCard";
-// import StaticCard from "@atoms/cards/StaticCard";
-
-import { Boat } from "@models/Boat";
-//import { useNavigate } from "react-router-dom";
-import { socket } from "@src/socket";
-//import { Button } from "@nextui-org/button";
-import { EventResponse } from "@src/models/EventResponse";
-//import ConfirmationModal from "@molecules/modals/ConfirmationModal";
-// import { format } from "date-fns";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@nextui-org/button";
+import ConfirmationModal from "@molecules/modals/ConfirmationModal";
+import EditRaceModal from "@molecules/modals/EditRaceModal";
+import {getCounterStr} from "./RaceTimer/timeListUtils.tsx"; 
 
 export default function RaceView() {
-  const { raceId } = useParams();
-  //const navigate = useNavigate();
+  const { regattaId, raceId } = useParams();
+  const navigate = useNavigate();
   const location = useLocation();
 
-  const [raceName, setRaceName] = useState<string>("");
+  const { user } = useAuth0();
+  const [regatta, setRegatta] = useState<Regatta>();
+  const [race, setRace] = useState<Race | null>(null);
+  const [races, setRaces] = useState<Race[]>([]);
   const [boats, setBoats] = useState<Boat[]>([]);
-  const [startTime, setStartTime] = useState<string>("");
- // const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState({ regatta: true, race: true });
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   useEffect(() => {
-    if (location.state?.race?.name) {
-      setRaceName(location.state.race.name);
-    } else if (raceId) {
+    socket.emit("getRegattaById", regattaId, (res) => {
+      if (res.error) {
+        console.error("Failed to fetch regatta:", res.error);
+      } else {
+        setRegatta(res.data.regatta);
+        setRaces(res.data.races);
+        setIsLoading((prev) => ({ ...prev, regatta: false }));
+      }
+    });
+
+    if (location.state?.race) {
+      setRace(location.state.race);
+      setIsLoading((prev) => ({ ...prev, race: false }));
+    } else if (raceId && regattaId) {
       socket.emit("getRaceById", raceId, (res: EventResponse) => {
         if (res.error) {
           console.error("Failed to fetch race details:", res.error);
         } else {
-          console.log("Received response:", res);
-  
           const { race, boats: fetchedBoats } = res.data;
+          setRace(race || null);
+          setIsLoading((prev) => ({ ...prev, race: false }));
+
           fetchedBoats.sort((a: Boat, b: Boat) => {
             if (!a.finishTime) return 1;
             if (!b.finishTime) return -1;
-            return new Date(a.finishTime).getTime() - new Date(b.finishTime).getTime();
+            return (
+              new Date(a.finishTime).getTime() -
+              new Date(b.finishTime).getTime()
+            );
           });
-  
-          setRaceName(race.name);
           setBoats(fetchedBoats);
-          if (res.data.race.startTime) {
-            setStartTime(res.data.race.startTime);
-          }
         }
       });
     }
-  }, [raceId, location.state]);
+  }, [raceId, regattaId, location.state]);
   
-  console.log("Current boats:", boats);
   const participants = boats.flatMap((boat) => boat.participantNames || []);
-  console.log("Participants:", participants);
 
-  const formatTime = (time?: Date | string) => {
-    if (!time) return "No finish time";
+  const formatTime = (time?: Date | string, boat: boolean) => {
+    if (!time) return "No Time Available";
+    if(boat){
+        time = new Date(time);
+        return getCounterStr(time.getTime());
+    }
+
     return new Date(time).toLocaleString("en-US", {
       month: "short",
       day: "numeric",
@@ -64,30 +83,84 @@ export default function RaceView() {
       minute: "2-digit",
     });
   };
-
-  const raceStart = formatTime(startTime);
+  const raceStart = formatTime(race?.startTime, false);
 
   const boatsWithFinishTimes = boats.map((boat) => ({
     ...boat,
-    displayName: `${boat.name || "Unnamed Boat"} (${formatTime(boat.finishTime)})`,
-  }));
+    displayName: `${boat.name || "Unnamed Boat"} (${formatTime(boat.finishTime, true)})`,
+    }));
 
-  console.log("Boats with times: ", boatsWithFinishTimes);
+  const boatTitles = boatsWithFinishTimes.map(
+    (eachBoat) => eachBoat.displayName
+  );
 
-  const boatTitles = boatsWithFinishTimes.map((eachBoat) => eachBoat.displayName);
+  const updateRace = (data: { name: string }) => {
+    const updatedRace = {
+      raceId: raceId,
+      name: data.name,
+    };
+  
+    socket.emit("updateRace", updatedRace, (res) => {
+      if (res.error) {
+        console.error("Failed to update race:", res.error);
+      } else {
+        console.log("Race updated successfully", res.data);
+        setRace(res.data);
+      }
+    });
+  };
+
+  const deleteRace = () => {
+    socket.emit("deleteRace", raceId, (res: EventResponse) => {
+      if (res.error) {
+        console.error("Failed to delete race:", res.error);
+      } else {
+        console.log("Race deleted successfully");
+        navigate(`/regatta/${regatta?._id}`);
+      }
+    });
+  };
+
+  const isRegattaAdmin = user?.sub === regatta?.adminId;
+  const isRegattaTimekeeper =
+      Array.isArray(regatta?.timekeeperIds) &&
+      user?.sub &&
+      regatta.timekeeperIds.includes(user.sub);
+
+      const getStartRaceButton = (rId: string, r: Race | null) => {      
+        const canStart = isRegattaAdmin || isRegattaTimekeeper;
+      
+        if (!canStart) return null;
+      
+        return (
+          <Button
+            color="warning"
+            onClick={() => navigate(`/RaceTimer/${rId}`)}
+          >
+            Start Race
+          </Button>
+        );
+      };
+    
+  const breadcrumbs: Breadcrumb[] = [
+    { name: "Home", href: "/home" },
+    { name: regatta?.name ?? "regatta", href: `/regatta/${regatta?._id}` },
+    { name: race?.name ?? "race" },
+  ];
 
   return (
-    <AppLayout title={raceName} subtitle="race" className="flex">
+    <AppLayout
+      isLoading={isLoading.regatta || isLoading.race}
+      title={race?.name}
+      subtitle="race"
+      breadcrumbs={breadcrumbs}
+    >
       <div className="grow flex flex-col lg:flex-row gap-3">
         <ResponsiveCard title="Race Start Time">
           <p>{raceStart}</p>
         </ResponsiveCard>
-        <ResponsiveCard title="Ranked Boats in Race">
-          <List
-            ariaLabel="List of boats"
-            itemType="race"
-            items={boatTitles}
-          />
+        <ResponsiveCard title="Boats in Race">
+          <List ariaLabel="List of boats" itemType="race" items={boatTitles} />
         </ResponsiveCard>
         <ResponsiveCard title="Participants in Race">
           <List
@@ -97,6 +170,34 @@ export default function RaceView() {
           />
         </ResponsiveCard>
       </div>
-    </AppLayout> 
+        {isRegattaAdmin && (
+          <div className="self-end flex items-center gap-2">
+          {getStartRaceButton(raceId!, race)}
+          <Button color="danger" onClick={() => setDeleteModalOpen(true)}>
+            Delete Race
+          </Button>
+          <Button color="primary" onClick={() => setEditModalOpen(true)}>
+            Edit Race
+          </Button>
+          </div>
+        )}
+
+      <EditRaceModal
+        isOpen={editModalOpen}
+        onUpdate={updateRace}
+        onClose={() => setEditModalOpen(false)}
+        race={race!}
+      />
+
+      <ConfirmationModal
+        isOpen={deleteModalOpen}
+        message="Are you sure you want to delete this race?"
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={deleteRace}
+      />
+    </AppLayout>
+    
   );
 }
+
+

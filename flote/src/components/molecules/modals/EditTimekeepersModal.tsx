@@ -3,10 +3,10 @@ import { useState, useEffect } from "react";
 import { EventResponse } from "@models/EventResponse";
 import { socket } from "@src/socket";
 
-import PlusButton from "@atoms/icon-buttons/PlusButton";
+import EditableList from "@atoms/EditableList";
 import GenericModal from "@atoms/GenericModal";
 import { Input } from "@nextui-org/input";
-import TrashButton from "@atoms/icon-buttons/TrashButton";
+import PlusButton from "@atoms/icon-buttons/PlusButton";
 
 type Props = {
   isOpen: boolean;
@@ -95,17 +95,11 @@ export default function EditTimekeepersModal({
         </div>
         {error && <p className="text-red-500 text-sm">{error}</p>}
       </div>
-      <ul>
-        {emails.map((e) => (
-          <li key={e} className="-mb-3">
-            <TrashButton onClick={() => deleteTimekeeper(e)}></TrashButton>
-            <span>{e}</span>
-          </li>
-        ))}
-      </ul>
-      {emails.length === 0 && (
-        <div className="italic ml-2">No timekeepers yet!</div>
-      )}
+      <EditableList
+        items={emails}
+        onDelete={deleteTimekeeper}
+        emptyMessage="No timekeepers yet!"
+      />
     </GenericModal>
   );
 }

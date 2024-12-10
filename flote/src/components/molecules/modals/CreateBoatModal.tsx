@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 
+import EditableList from "@atoms/EditableList";
 import GenericModal from "@atoms/GenericModal";
 import { Input } from "@nextui-org/input";
 import PlusButton from "@atoms/icon-buttons/PlusButton";
-import TrashButton from "@atoms/icon-buttons/TrashButton";
 
 type Props = {
   isOpen: boolean;
@@ -151,19 +151,11 @@ export default function CreateBoatModal({
             <p className="text-red-500 text-sm">{participantError}</p>
           )}
         </div>
-        <ul>
-          {participants.map((participant, index) => (
-            <li key={index} className="-mb-3">
-              <TrashButton
-                onClick={() => deleteParticipant(participant)}
-              ></TrashButton>
-              <span>{participant}</span>
-            </li>
-          ))}
-        </ul>
-        {participants.length === 0 && (
-          <div className="italic mt-2 ml-2">No participants yet!</div>
-        )}
+        <EditableList
+          items={participants}
+          onDelete={deleteParticipant}
+          emptyMessage="No participants yet!"
+        />
       </div>
       {formError && <p className="text-red-500 text-sm">{formError}</p>}
     </GenericModal>

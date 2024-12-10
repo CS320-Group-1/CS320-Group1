@@ -5,7 +5,7 @@ import {getCounterStr} from "./timeListUtils.tsx";
 import { useState } from "react";
 
 
-export function TimeLinker({boatIds, times, setTimes, linkingIndex, setLinkingIndex}){
+export function TimeLinker({boatIds, times, setTimes, linkingIndex, setLinkingIndex, boatDBIds}){
     if(linkingIndex === -1)
         return <></>
     
@@ -36,7 +36,7 @@ export function TimeLinker({boatIds, times, setTimes, linkingIndex, setLinkingIn
                             setQuery(e.target.value);
                         }}>
                     </input>
-                    <ul className="overflow-y-scroll"> {boatIds.filter((id) => filterBoats(id, query)).map(boatId => renderBoat(boatId, setTimes, linkingIndex, setLinkingIndex))} </ul>
+                    <ul className="overflow-y-scroll"> {boatIds.filter((id) => filterBoats(id, query, times)).map(boatId => renderBoat(boatId, setTimes, linkingIndex, setLinkingIndex, boatIds, boatDBIds))} </ul>
                 </div>
             </div> 
         </div>
@@ -44,19 +44,20 @@ export function TimeLinker({boatIds, times, setTimes, linkingIndex, setLinkingIn
 
 }
 
-function filterBoats(boatId, query){
+function filterBoats(boatId, query, times){
+    if(times.map(time => time[1]).includes(boatId)) return false; 
     if(query.replaceAll(' ', '') == '') return true;
     return boatId.includes(query); 
 }
 
-function renderBoat(boatId, setTimes, linkingIndex, setLinkingIndex){
+function renderBoat(boatId, setTimes, linkingIndex, setLinkingIndex, boatIds, boatDBIds){
     return <li className="flex flex-row items-center" key = {boatId}>
         <Button
                 color="warning"
                 size="lg"
                 radius="sm"
                 onPress={() => {
-                    linkTime(linkingIndex, boatId, setTimes);
+                    linkTime(linkingIndex, boatId, setTimes, boatIds, boatDBIds);
                     setLinkingIndex(-1);
                     }
                 }

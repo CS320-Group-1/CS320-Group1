@@ -1,16 +1,17 @@
 import { Button } from "@nextui-org/react";
 import {DNF_CODE, DNS_CODE, UNLAPPED_CODE} from "./RaceTimer.tsx";
+import {clearAllBoats, updateBoatTime, markBoatDNF, markBoatDNS} from "./DBUtils.tsx";
 
-export function renderTime(count, time, index, setTimes, linkingIndex, setLinkingIndex){
+export function renderTime(count, time, index, setTimes, linkingIndex, setLinkingIndex, boatIds, boatDBIds){
     return (
     <li key={index} className="flex flex-row items-center"> 
         <div>{renderCount(time, count, index, setTimes)}</div> 
-        <div className="grow">{renderBoatInfo(time, index, setTimes, linkingIndex, setLinkingIndex)}</div>
+        <div className="grow">{renderBoatInfo(time, index, setTimes, linkingIndex, setLinkingIndex, boatIds, boatDBIds)}</div>
         <Button
             color="danger"
             size="lg"
             radius="sm"
-            onPress={() => deleteTime(index, setTimes)}
+            onPress={() => deleteTime(index, setTimes, boatIds, boatDBIds) }
             className="self-end w-32 m-6"
             >Delete </Button>
 
@@ -44,7 +45,7 @@ export function renderCount(time, count, index, setTimes){
 }
 
 
-export function renderBoatInfo(time, index, setTimes, linkingIndex, setLinkingIndex){
+export function renderBoatInfo(time, index, setTimes, linkingIndex, setLinkingIndex, boatIds, boatDBIds){
     //renders the boat part of a list element
     if(time[1] == null){
         return<Button
@@ -63,7 +64,7 @@ export function renderBoatInfo(time, index, setTimes, linkingIndex, setLinkingIn
                 color="warning"
                 size="lg"
                 radius="sm"
-                onPress={() => unLinkTime(index, setTimes)}
+                onPress={() => unLinkTime(index, setTimes, boatIds, boatDBIds)}
                 className="self-end w-32 m-6"
                 >unLink</Button>
     </>
@@ -71,6 +72,18 @@ export function renderBoatInfo(time, index, setTimes, linkingIndex, setLinkingIn
 }
 
 export function getCounterStr(count){
+    if(count == DNF_CODE){
+        return "DNF";
+    }
+
+    if(count == DNS_CODE){
+        return "DNS";
+    }
+
+    if(count == UNLAPPED_CODE){
+        return "No Time";
+    }
+
     let addLeadingZero = (didgs) => {
         if(didgs.length == 1){
             didgs = "0" + didgs;
@@ -80,12 +93,16 @@ export function getCounterStr(count){
     }
     let seconds = count % 60;
     let secondsString = addLeadingZero(seconds.toString());
-    let minutes = (count - seconds) / 60;
+    let minutes = (count - seconds) / 60 % 60;
     let minutesString = addLeadingZero(minutes.toString());
     let hours = (count-minutes*60-seconds) / (60*60);
     let hoursString = addLeadingZero(hours.toString());
     return hoursString + ":" + minutesString + ":" + secondsString;
 
+}
+
+export function findBoatDBId(boatId, boatIds, boatDBId){
+    return boatDBId[boatIds.indexOf(boatId)];
 }
 
 export function addTime(count, setTimes){
@@ -96,13 +113,16 @@ export function addTime(count, setTimes){
 }
 
 
+//TODO edit here down to call db
 //links an entire to a boat
-export function linkTime(index: number, boatRaceId: string, setTimes){
+export function linkTime(index: number, boatRaceId: string, setTimes, boatIds, boatDBIds){
     let needSort = false;
     setTimes((times)=>{
             const list = times.map( (time, i) => {
                     if(index === i){
                         time[1] = boatRaceId;
+                        //calls db
+                        updateBoatTime(findBoatDBId(boatRaceId, boatIds, boatDBIds), time[0]); 
                         needSort = time[0] == DNS_CODE || time[0] == DNF_CODE;
                     } 
 
@@ -114,11 +134,13 @@ export function linkTime(index: number, boatRaceId: string, setTimes){
 
 }
 
-export function unLinkTime(index: number, setTimes){
+export function unLinkTime(index: number, setTimes, boatIds, boatDBIds){
     let needSort = false;
     setTimes((times)=>{
             return times.map((time, i) => {
                     if(index === i){
+                        let boatRaceId = time[1];
+                        updateBoatTime(findBoatDBId(boatRaceId, boatIds, boatDBIds), UNLAPPED_CODE); 
                         time[1] = null;
                         needSort = time[0] == DNS_CODE || time[0] == DNF_CODE;
                     }
@@ -128,17 +150,26 @@ export function unLinkTime(index: number, setTimes){
     if(needSort) sortTimes(setTimes);
 }
 
-export function deleteTime(index: number, setTimes){
+export function deleteTime(index: number, setTimes, boatIds, boatDBIds){
+    //rms time from db
     setTimes((times) => {
+                
+            let boatRaceId = times[index][1];
+            if(boatRaceId !== null)
+                updateBoatTime(findBoatDBId(boatRaceId, boatIds, boatDBIds), UNLAPPED_CODE); 
+
             return times.filter((item, i) => i !== index);
     });
 }
 
-export function updateCountOfTime(index: number, newCount: number, setTimes){
+export function updateCountOfTime(index: number, newCount: number, setTimes, boatIds, boatDBIds){
     setTimes((times) => {
             return times.map((item, i) =>{
                 if(i == index){
                     item[0] = newCount;
+                    let boatRaceId = item[1];
+                    if(boatRaceId !== null)
+                        updateBoatTime(findBoatDBId(boatRaceId, boatIds, boatDBIds), newCount); 
                 }
                 return item;
             });

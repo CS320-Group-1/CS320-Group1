@@ -45,11 +45,11 @@ export default function RegattaTable({ searchQuery }: Props) {
         } else {
           const races = res.data.races || [];
           const sortedRaces = races.sort((r1, r2) => r1.startTime > r2.startTime ? r2 : r1);
-          const date = sortedRaces.length > 0 ? new Date(sortedRaces[0].startTime).toLocaleDateString() : "TBD";
+          const date = sortedRaces.length > 0 ? sortedRaces[0].startTime ? new Date(sortedRaces[0].startTime).toLocaleDateString() : "TBD" : "TBD";
 
           const row: SearchTableRow = {
             id: regatta._id!,
-            date: new Date(date).toLocaleDateString(),
+            date: typeof date === 'string' ? date : new Date(date).toLocaleDateString(),
             name: regatta.name,
             action: <OpenExternalLinkButton />,
           }

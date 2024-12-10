@@ -7,7 +7,9 @@ export function RegattaHandler(io, socket) {
   socket.on("getRegattaById", getRegattaById);
   socket.on("deleteRegatta", deleteRegatta);
   socket.on("updateTimekeepers", updateTimekeepers);
+  socket.on("updateRegatta", updateRegatta);
 }
+
 
 /**
  * Creates a new regatta. The callback is called with an object with a data
@@ -29,18 +31,19 @@ async function createRegatta(regatta, callback) {
 }
 
 /**
- * Gets all regattas the user with the specified ID admins and timekeeps. The
- * callback is called with an object with a data field that holds the regattas:
- * { regattas: { admin: Regatta[], timekeeper: Regatta[] } }.
- * @param {string} userId
+ * Gets all regattas the user with the specified id/email admins and timekeeps.
+ * The callback is called with an object with a data field that holds the
+ * regattas: { regattas: { admin: Regatta[], timekeeper: Regatta[] } }.
+ * @param {{id: string, email: string}} data
  * @param {Function} callback
  */
-async function getRegattas(userId, callback) {
+async function getRegattas(data, callback) {
   const response = {};
+  const { id, email } = data;
 
   try {
-    const admin = await Regatta.find({ adminId: userId }).exec();
-    const timekeeper = await Regatta.find({ timekeeperIds: userId }).exec();
+    const admin = await Regatta.find({ adminId: id }).exec();
+    const timekeeper = await Regatta.find({ timekeeperIds: email }).exec();
 
     response.data = {
       regattas: { admin, timekeeper },
@@ -142,6 +145,36 @@ async function updateTimekeepers(data, callback) {
     const regatta = await Regatta.findById(regattaId).exec();
     regatta.timekeeperIds = timekeeperIds;
     await regatta.save();
+  } catch (error) {
+    response.error = error.message;
+  }
+
+  callback(response);
+}
+
+/**
+ * Updates a regatta's data in the database
+ * @param {Object} updateData - The data for the regatta update
+ * @param {Function} callback - Callback function to send back the response
+ */
+async function updateRegatta(updateData, callback) {
+  const response = {};
+
+  try {
+    const { regattaId, name } = updateData;
+    if (!regattaId) {
+      throw new Error("Regatta ID is required to update a regatta.");
+    }
+
+    const regatta = await Regatta.findById(regattaId);
+
+    if (!regatta) {
+      throw new Error("Regatta not found.");
+    }
+
+    if (name !== undefined) regatta.name = name;
+    await regatta.save();
+    response.data = regatta;
   } catch (error) {
     response.error = error.message;
   }

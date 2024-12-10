@@ -15,6 +15,7 @@ export default function AccountHome() {
   const [regattasAdmin, setRegattasAdmin] = useState<Regatta[]>([]);
   const [regattasTimekeeper, setRegattasTimekeeper] = useState<Regatta[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth0();
   const navigate = useNavigate();
 
@@ -35,22 +36,23 @@ export default function AccountHome() {
   };
 
   useEffect(() => {
-    socket.emit("getRegattas", user?.sub, (res: EventResponse) => {
-      if (res.error) {
-        console.error("getRegattas failed:", res.error);
-      } else {
-        setRegattasAdmin(res.data.regattas.admin);
-        setRegattasTimekeeper(res.data.regattas.timekeeper);
+    socket.emit(
+      "getRegattas",
+      { id: user?.sub, email: user?.email },
+      (res: EventResponse) => {
+        if (res.error) {
+          console.error("getRegattas failed:", res.error);
+        } else {
+          setRegattasAdmin(res.data.regattas.admin);
+          setRegattasTimekeeper(res.data.regattas.timekeeper);
+          setIsLoading(false);
+        }
       }
-    });
+    );
   }, [user]);
 
   return (
-    <AppLayout
-      title="home"
-      className="flex flex-col md:flex-row gap-3"
-      hideBackButton
-    >
+    <AppLayout isLoading={isLoading} title="home" className="md:flex-row">
       <ResponsiveCard
         title="my regattas"
         action="add"
