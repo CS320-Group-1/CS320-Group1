@@ -21,7 +21,6 @@ export default function RaceCreate() {
   const [raceId, setRaceId] = useState<string | null>(null);
   // const [regattaId, setRegattaId] = useState<string | null>(null);
 
-  // const { user } = useAuth0();
   const navigate = useNavigate();
 
   const MockBoat = (): Boat => ({
@@ -44,16 +43,14 @@ export default function RaceCreate() {
         } else {
           console.log("New race created:", res.data);
           const createdRaceId = res.data.id;
-          // const createdRegattaId = res.data.regattaId;
+          const createdRegattaId = res.data.regattaId;
           setRaceId(createdRaceId);
-          // setRegattaId(createdRegattaId);
 
           console.log("Created Race ID:", createdRaceId, "Regatta ID:", createdRegattaId); //
 
           boats.forEach((boat) => {
             boat.raceId = createdRaceId;
-            // boat.regattaId = createdRegattaId;
-            boat.regattaId = regattaId;
+            boat.regattaId = createdRegattaId;
           });
 
           boats.forEach((boat) => {
@@ -67,8 +64,6 @@ export default function RaceCreate() {
           });
 
           navigate(`/regatta/${createdRegattaId}`, {
-          // navigate(`/race/${createdRaceId}`, {
-          // navigate(`/regatta/${createdRegattaId}/race/${createdRaceId}`, {
             state: { race: res.data, boats: boats },
           });
         }

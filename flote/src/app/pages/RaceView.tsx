@@ -82,7 +82,7 @@ export default function RaceView() {
         <ResponsiveCard title="Race Start Time">
           <p>{raceStart}</p>
         </ResponsiveCard>
-        <ResponsiveCard title="Boats in Race">
+        <ResponsiveCard title="Ranked Boats in Race">
           <List
             ariaLabel="List of boats"
             itemType="race"
